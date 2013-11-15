@@ -37,6 +37,9 @@ class TinyMVC_Model
     $this->db = tmvc::instance()->controller->load->database($poolname);
   }
   
+  function __loadModel($model, $var = null) {
+     if (empty($var)){ $var = $model; }
+     return tmvc::instance()->controller->load->model($model, $var);
+  }
+  
 }
-
-?>
