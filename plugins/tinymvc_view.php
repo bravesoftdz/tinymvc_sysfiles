@@ -47,7 +47,7 @@ class TinyMVC_View
 	 */    
   public function assign($key, $value=null)
   {
-    if(isset($value))
+    if(is_string($key))
       $this->view_vars[$key] = $value;
     else
       foreach($key as $k => $v)

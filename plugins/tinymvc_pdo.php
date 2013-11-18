@@ -123,6 +123,21 @@ class TinyMVC_PDO
     
   }
 
+   /**
+    * Generate an upsert statement for setting one column value
+    */
+   public function gen_upsert_sql($pkcolname, $pk, $table, $column, $val) {
+      $sql_upsert_templ = 'INSERT INTO `{TABLE}` (`{PKCOLUMN}`, `{COLUMN}`) VALUES (:pk, :value)
+                           ON DUPLICATE KEY UPDATE `{COLUMN}` = :value_dup';
+      $params = array(':pk'=>$pk, ':value'=>$val, ':value_dup'=>$val);
+      $sql = $sql_upsert_templ;
+      $sql = preg_replace('/\\{TABLE\\}/', $table, $sql);
+      $sql = preg_replace('/\\{COLUMN\\}/', $column, $sql);
+      $sql = preg_replace('/\\{PKCOLUMN\\}/', $pkcolname, $sql);
+      return array($sql, $params);
+   }
+   
+   
 	/**
 	 * select
 	 *
