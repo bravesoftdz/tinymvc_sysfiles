@@ -120,7 +120,12 @@ class TinyMVC_View
     if(isset($view_vars))
       extract($view_vars);
     try {
-      include($_tmvc_filepath);
+      if (file_exists($_tmvc_filepath)){
+	  	include($_tmvc_filepath);
+	  }else if (file_exists(TMVC_MYAPPDIR.'views'.DS.$_tmvc_filepath)){
+	  	include(TMVC_MYAPPDIR.'views'.DS.$_tmvc_filepath);
+	  }
+	  
     } catch (Exception $e) {
       throw new Exception($e->getMessage()." in file '$_tmvc_filepath'");      
     }
