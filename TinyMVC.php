@@ -9,7 +9,7 @@
  ***/
 
 if(!defined('TMVC_VERSION'))
-  define('TMVC_VERSION','1.2.3.jk.0.1');
+  define('TMVC_VERSION','1.2.3.jk.0.3');
 
 /* directory separator alias */
 if(!defined('DS'))
@@ -18,6 +18,53 @@ if(!defined('DS'))
 /* define myapp directory */
 if(!defined('TMVC_MYAPPDIR'))
   define('TMVC_MYAPPDIR', TMVC_BASEDIR . 'myapp' . DS);
+
+
+
+function TMVC_findInc($class){
+	$class = strtolower($class);
+	$possible_dirs = array (
+		TMVC_MYAPPDIR . 'controllers' . DS, 
+		TMVC_MYAPPDIR . 'models' . DS, 
+		TMVC_MYAPPDIR . 'configs' . DS, 
+		TMVC_MYAPPDIR . 'plugins' . DS, 
+		TMVC_MYAPPDIR . 'views' . DS, 
+		TMVC_BASEDIR . 'myfiles' . DS . 'controllers' . DS, 
+		TMVC_BASEDIR . 'myfiles' . DS . 'models' . DS, 
+		TMVC_BASEDIR . 'myfiles' . DS . 'configs' . DS, 
+		TMVC_BASEDIR . 'myfiles' . DS . 'plugins' . DS, 
+		TMVC_BASEDIR . 'myfiles' . DS . 'views' . DS, 
+		TMVC_BASEDIR . 'sysfiles' . DS . 'controllers' . DS, 
+		TMVC_BASEDIR . 'sysfiles' . DS . 'models' . DS, 
+		TMVC_BASEDIR . 'sysfiles' . DS . 'configs' . DS, 
+		TMVC_BASEDIR . 'sysfiles' . DS . 'plugins' . DS, 
+		TMVC_BASEDIR . 'sysfiles' . DS . 'views' . DS, 
+	);
+
+	foreach($possible_dirs as $dir){
+	    $file = "$dir$class.php";	
+	    $lcfile = strtolower($file);
+		if (file_exists($lcfile)){
+			include_once($lcfile);
+			return true;
+		}else if (file_exists($file)){
+			include_once($file);
+			return true;
+		}
+    }
+	return false;
+}
+
+if (set_include_path(get_include_path()) == false){
+	//some servers disable set_include_path, this will tell us
+	define('SETINC',false);
+	
+	//since we can't use all the include paths we will manually search
+	spl_autoload_register('TMVC_findInc');
+	
+}else{
+	define('SETINC', true);
+}
 
 /* set include_path for spl_autoload */
 set_include_path(get_include_path()
@@ -84,6 +131,24 @@ class tmvc
     self::instance($this,$id);
   }
   
+  public function getAppFile($folder, $file) {
+	   	$fullpath = TMVC_MYAPPDIR.DS.$folder.DS.$file;
+		return $fullpath;
+  }
+  
+  public function incAppFile($folder, $file) {
+  	    global $config;
+        if (SETINC === true){
+			 return include_once($file);
+		}
+		$fullpath = $this->getAppFile($folder, $file);
+		if (file_exists($fullpath)){
+			return include_once($fullpath);
+		}
+		return false;
+  }
+  
+  
   /**
    * main method of execution
    *
@@ -99,12 +164,17 @@ class tmvc
     /* set path_info */
     $this->path_info = !empty($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] :
 	    (!empty($_SERVER['ORIG_PATH_INFO']) ? $_SERVER['ORIG_PATH_INFO'] : '');
-    
+
     /* internal error handling */
     $this->setupErrorHandling();
     
     /* include application config */
-    include('config_application.php');
+	$cfg = $this->incAppFile('configs', 'config_application.php');
+	
+	if (!empty($cfg)){
+		$config = $cfg;
+	}
+	
     $this->config = $config;
 
     /* url remapping/routing */    
@@ -166,6 +236,10 @@ class tmvc
             break;
         }
         call_user_func_array(array($this->controller, $this->action), $params);
+        if (method_exists($this->controller, '_onAfterAction')){
+            call_user_func_array(array($this->controller, '_onAfterAction'), 
+                                array($this->action));
+        }
     }
     
     if($this->config['timer'])
@@ -231,6 +305,11 @@ class tmvc
       $controller_file = "{$controller_name}.php";
     } else {
       $controller_name = !empty($this->url_segments[1]) ? preg_replace('!\W!','',$this->url_segments[1]) : $this->config['default_controller'];
+	  
+	  if (empty($controller_name)){
+	  	 return false;
+	  }
+	  
       $controller_file = "{$controller_name}.php";
       /* if no controller, use default */
       if(!stream_resolve_include_path($controller_file))
@@ -239,16 +318,20 @@ class tmvc
         $controller_file = "{$controller_name}.php";
       }
     }
+	
     $this->controller_name = $controller_name;
-    
-    include($controller_file);
-    
+ 
+    $this->incAppFile('controllers', $controller_file);
+
+	
+
     /* see if controller class exists */
     $controller_class = $controller_name.'_Controller';
       
     /* instantiate the controller */
     $this->controller = new $controller_class(true);
     
+    return $this->controller;
   }  
   
   /**
@@ -278,7 +361,7 @@ class tmvc
    */    
   public function setupAutoloaders()
   {
-    include('config_autoload.php');
+    $this->incAppFile('configs', 'config_autoload.php');
     if(!empty($config['libraries']))
     {
       foreach($config['libraries'] as $library)
