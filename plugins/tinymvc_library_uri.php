@@ -59,5 +59,3 @@ class TinyMVC_Library_URI {
  
  
 }
-
-?>

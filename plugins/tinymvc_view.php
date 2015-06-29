@@ -47,7 +47,7 @@ class TinyMVC_View
 	 */    
   public function assign($key, $value=null)
   {
-    if(isset($value))
+    if(is_string($key))
       $this->view_vars[$key] = $value;
     else
       foreach($key as $k => $v)
@@ -117,12 +117,17 @@ class TinyMVC_View
   {
     // bring view vars into view scope
     extract($this->view_vars);
-    if(isset($view_vars))
+    if(isset($view_vars) && is_array($view_vars))
       extract($view_vars);
     try {
-      include($_tmvc_filepath);
+      if (file_exists($_tmvc_filepath)){
+	  	include($_tmvc_filepath);
+	  }else if (file_exists(TMVC_MYAPPDIR.'views'.DS.$_tmvc_filepath)){
+	  	include(TMVC_MYAPPDIR.'views'.DS.$_tmvc_filepath);
+	  }
+	  
     } catch (Exception $e) {
-      throw new Exception("Unknown file '$_tmvc_filepath'");      
+      throw new Exception($e->getMessage()." in file '$_tmvc_filepath'");      
     }
   }
 
